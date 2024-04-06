@@ -9,7 +9,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -27,6 +29,9 @@
     "lint": "eslint src --ext ts",
     "test": "vscode-test"
   },
+  "enabledApiProposals": [
+    "inlineCompletionsAdditions"
+  ],
   "devDependencies": {
     "@types/vscode": "^1.88.0",
     "@types/mocha": "^10.0.6",
@@ -37,5 +42,16 @@
     "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.8",
     "@vscode/test-electron": "^2.3.9"
+  },
+  "dependencies": {
+    "@langchain/community": "^0.0.44",
+    "@langchain/google-genai": "^0.0.10",
+    "@langchain/openai": "^0.0.25",
+    "langchain": "^0.1.30",
+    "node-fetch": "^2.7.0",
+    "node-llama-cpp": "^2.8.9"
+  },
+  "overrides": {
+    "@langchain/core": "0.1.53"
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "my-pilot",
   "displayName": "my-pilot",
-  "description": "Open source version of co-pilot implementation for vscode",
+  "description": "Open source version of co-pilot implementation for vscode.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.88.0"
@@ -22,36 +22,29 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
+    "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test"
   },
-  "enabledApiProposals": [
-    "inlineCompletionsAdditions"
-  ],
   "devDependencies": {
-    "@types/vscode": "^1.88.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/vscode": "^1.88.0",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.8",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "@langchain/community": "^0.0.44",
-    "@langchain/google-genai": "^0.0.10",
-    "@langchain/openai": "^0.0.25",
-    "langchain": "^0.1.30",
-    "node-fetch": "^2.7.0",
+    "@langchain/core": "^0.1.54",
+    "@langchain/openai": "^0.0.26",
+    "langchain": "^0.1.31",
     "node-llama-cpp": "^2.8.9"
-  },
-  "overrides": {
-    "@langchain/core": "0.1.53"
   }
 }

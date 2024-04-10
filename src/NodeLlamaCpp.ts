@@ -1,6 +1,14 @@
 // async-wrapper.cjs
 // https://github.com/langchain-ai/langchainjs/blob/d6e25af137873493d30bdf5732d46b842e421ffa/langchain-core/src/language_models/llms.ts#L557
 // https://github.com/langchain-ai/langchainjs/blob/d6e25af137873493d30bdf5732d46b842e421ffa/langchain-core/src/callbacks/manager.ts
+
+/* 
+public constructor({
+        modelPath, seed = null, contextSize = 1024 * 4, batchSize, gpuLayers,
+        threads = 6, temperature = 0, topK = 40, topP = 0.95, logitsAll, vocabOnly, useMmap, useMlock, embedding
+    }: LlamaModelOptions) 
+*/
+
 import path from 'path';
 async function loadModule() {
     const { LlamaModel, LlamaContext, LlamaChatSession } = await import('node-llama-cpp');
@@ -9,13 +17,13 @@ async function loadModule() {
 
 const { LLM } = require('@langchain/core/language_models/llms')
 const {CallbackManagerForLLMRun} = require('@langchain/core/callbacks/manager')
-const llamaPath = "../models/llama-2-13b.Q6_K.gguf";
+const LLAMA2_PATH = "../models/llama-2-13b.Q6_K.gguf";
 class NodeLlamaCpp extends LLM {
     model: any;
     constructor(params: any) {
         super(params);
         loadModule().then(({LlamaModel}:any)=>{
-            this.model = new LlamaModel({ modelPath: path.join(__dirname,llamaPath), temperature: 0.7 });
+            this.model = new LlamaModel({ modelPath: path.join(__dirname, params.modelPath), temperature: 0.7 });
         });
     }
     _llmType(): string{
@@ -26,11 +34,19 @@ class NodeLlamaCpp extends LLM {
         options: this["ParsedCallOptions"],
         runManager?: any
         ): Promise<string> {
+        return this._simpleCall(prompt);
+    }
+    async _simpleCall(prompt: string): Promise<string> {
+        // wait until model is loaded
+        while (!this.model) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
         return this.model.run(prompt);
     }    
 }
-const LlamaCpp = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
+const LlamaCpp = new NodeLlamaCpp({modelPath:LLAMA2_PATH, temperature: 0.7 });
 export {
-    NodeLlamaCpp
+    NodeLlamaCpp,
+    LLAMA2_PATH
 };
 

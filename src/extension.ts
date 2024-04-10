@@ -8,11 +8,10 @@ const llamaPath = "../models/llama-2-13b.Q6_K.gguf";
 
 import { inlineCompletionProvider } from './MyIlineCompletionItemProvider';
 const { FakeListLLM } = require("langchain/llms/fake");
-const {NodeLlamaCpp} = require('./NodeLlamaCpp');
+const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
 
 try {
 	console.log('load module')
-	
 	const model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
 	console.log('loaded module')
 } catch (e) {

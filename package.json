@@ -29,6 +29,9 @@
     "lint": "eslint src --ext ts",
     "test": "vscode-test"
   },
+  "enabledApiProposals": [
+    "inlineCompletionsAdditions"
+  ],
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
@@ -46,5 +49,8 @@
     "@langchain/openai": "^0.0.26",
     "langchain": "^0.1.31",
     "node-llama-cpp": "^2.8.9"
+  },
+  "overrides": {
+    "@langchain/core": "0.1.53"
   }
 }

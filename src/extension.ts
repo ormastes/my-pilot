@@ -41,6 +41,11 @@ export function activate(context: vscode.ExtensionContext) {
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from my-pilot!');
 	});
+	try {
+		vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, inlineCompletionProvider);
+	}catch (e) {
+		console.error(e);
+	}
 
 	context.subscriptions.push(disposable);
 }

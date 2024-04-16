@@ -18,12 +18,24 @@ async function loadModule() {
 const { LLM } = require('@langchain/core/language_models/llms')
 const {CallbackManagerForLLMRun} = require('@langchain/core/callbacks/manager')
 const LLAMA2_PATH = "../models/llama-2-13b.Q6_K.gguf";
+
+
 class NodeLlamaCpp extends LLM {
     model: any;
+    context: any;
+    session: any;
+    inited: any;
     constructor(params: any) {
         super(params);
-        loadModule().then(({LlamaModel}:any)=>{
-            this.model = new LlamaModel({ modelPath: path.join(__dirname, params.modelPath), temperature: 0.7 });
+        var that = this;
+        this.inited = loadModule().then(({LlamaModel, LlamaContext, LlamaChatSession}:any)=>{
+            var model = new LlamaModel({ modelPath: path.join(__dirname, params.modelPath), temperature: 0.7 });
+            var context = new LlamaContext({model});
+            var session = new LlamaChatSession({context});
+            that.model = model;
+            that.context = context;
+            that.session = session;
+            return session;
         });
     }
     _llmType(): string{
@@ -36,13 +48,35 @@ class NodeLlamaCpp extends LLM {
         ): Promise<string> {
         return this._simpleCall(prompt);
     }
-    async _simpleCall(prompt: string): Promise<string> {
+    async _waitInit(): Promise<any> {
         // wait until model is loaded
-        while (!this.model) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await this.inited.then((session:any)=>{
+            return session;
+        });
+    }
+    _simpleCall(prompt: string): string {
+        if (!this.session) {
+            var initedResult  = this.inited;
+            var promptResult  = initedResult.then((session:any)=>{
+                const result = session.prompt(prompt);
+                return result;
+            });
+            var stringResult = promptResult.then((response:any)=>{
+                return response;
+            });
+
+            return stringResult;
         }
-        return this.model.run(prompt);
-    }    
+
+        // Now that we know the session is initialized, we can use it
+        try {
+            var result = this.session.prompt(prompt);
+            return result;
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
 }
 const LlamaCpp = new NodeLlamaCpp({modelPath:LLAMA2_PATH, temperature: 0.7 });
 export {

@@ -6,10 +6,10 @@ import * as vscode from 'vscode';
 const llamaPath = "../models/llama-2-13b.Q6_K.gguf";
 //const model = new LlamaCpp({ modelPath: llamaPath, temperature: 0.7 });
 
-import { inlineCompletionProvider } from './MyIlineCompletionItemProvider';
+import { MyIlineCompletionItemProvider } from './MyIlineCompletionItemProvider';
 const { FakeListLLM } = require("langchain/llms/fake");
 const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
-
+const { PromptTemplate } = require('@langchain/core/prompts');
 try {
 	console.log('load module')
 	const model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
@@ -41,7 +41,23 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello World from my-pilot!');
 	});
 	try {
-		vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, inlineCompletionProvider);
+		var model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
+		model._simpleCall("Hello llama model").then((response:any)=>{
+			console.log("Model loaded.", response);
+
+			const promptText = "Suggest code where {{<NEW CODE>}} is placed:\n"
+			+"Source Code To update:\nint add(int a, int b) {{\n{{<NEW CODE>}}\n}}\n"
+			+"Suggested Code:\n<1>\nreturn a + b;\n<2>\nint result = a + b;\nreturn result;\n"
+			+"Source Code To update:\n{prev}{{<NEW CODE>}}{post}\nSuggested Code:\n";
+			
+			const multipleInputPrompt = new PromptTemplate({
+				inputVariables: ["prev", "post"],
+				template: promptText,});
+
+			const chain = multipleInputPrompt.pipe(model);
+			vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, new MyIlineCompletionItemProvider(chain));
+		});
+		
 	}catch (e) {
 		console.error(e);
 	}

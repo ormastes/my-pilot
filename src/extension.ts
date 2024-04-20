@@ -2,21 +2,21 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+const { Message, SetMainThread } = require('./Message');
+SetMainThread(true);
+const {} = require('./BackGroundWorker');
+
 //const { LlamaCpp } = require("@langchain/community/llms/llama_cpp");
 const llamaPath = "../models/llama-2-13b.Q6_K.gguf";
 //const model = new LlamaCpp({ modelPath: llamaPath, temperature: 0.7 });
 
 import { MyIlineCompletionItemProvider } from './MyIlineCompletionItemProvider';
+
 const { FakeListLLM } = require("langchain/llms/fake");
 const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
 const { PromptTemplate } = require('@langchain/core/prompts');
-try {
-	console.log('load module')
-	const model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
-	console.log('loaded module')
-} catch (e) {
-	console.log(e)
-}
+const { setWorkerModel, getResponse, sendMessage, startWorker } = require('./WorkerInterface');
+const { MyEventListener } = require('./EventListener');
 
 
 //import { LlamaCpp } from "@langchain/community/llms/llama_cpp";
@@ -24,6 +24,8 @@ const llm = new FakeListLLM({
 	responses: ["I'll callback later.", "You 'console' them!"],
   });
 
+let eventListener:any;
+ 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -42,20 +44,22 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	try {
 		var model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
-		model._simpleCall("Hello llama model").then((response:any)=>{
+		model._simpleCall("You are a coding assistant. Ready?").then((response:any)=>{
 			console.log("Model loaded.", response);
 
-			const promptText = "Suggest code where {{<NEW CODE>}} is placed:\n"
-			+"Source Code To update:\nint add(int a, int b) {{\n{{<NEW CODE>}}\n}}\n"
-			+"Suggested Code:\n<1>\nreturn a + b;\n<2>\nint result = a + b;\nreturn result;\n"
-			+"Source Code To update:\n{prev}{{<NEW CODE>}}{post}\nSuggested Code:\n";
+			const promptText = "Suggest code where {{NEW CODE}} is placed:\n"
+			+"Source Code To update:\nint add(int a, int b) {{\n{{NEW CODE}}\n}}\n"
+			+"Suggested NEW CODE:\n<1>\nreturn a + b;\n<2>\nint result = a + b;\nreturn result;\n"
+			+"Source Code To update:\n{prev}{{NEW CODE}}{post}\nSuggested NEW CODE:\n";
 			
 			const multipleInputPrompt = new PromptTemplate({
 				inputVariables: ["prev", "post"],
 				template: promptText,});
 
 			const chain = multipleInputPrompt.pipe(model);
-			vscode.languages.registerInlineCompletionItemProvider({ pattern: '**' }, new MyIlineCompletionItemProvider(chain));
+			setWorkerModel(chain);
+			eventListener = new MyEventListener(getResponse, sendMessage);
+			startWorker();
 		});
 		
 	}catch (e) {
@@ -66,4 +70,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+	eventListener.dispose();
+}

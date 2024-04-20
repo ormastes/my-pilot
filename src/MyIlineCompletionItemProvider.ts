@@ -11,10 +11,15 @@ const { FakeListLLM } = require("langchain/llms/fake");
 const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
 const { PromptTemplate } = require('@langchain/core/prompts');
 
+class Response {
+    constructor(public position:vscode.Position, public prev: string, public next: string, public response: string) {}
+}
+
 class MyIlineCompletionItemProvider implements vscode.InlineCompletionItemProvider {
-
+    // string tuple array of responses
+    responses:Response[];
     constructor(private chain: any) {
-
+        this.responses = [];
     }
     isCursorInMiddleOfWord(document: vscode.TextDocument, position: vscode.Position) {
         const lineText = document.lineAt(position.line).text;
@@ -62,49 +67,76 @@ class MyIlineCompletionItemProvider implements vscode.InlineCompletionItemProvid
         const rightWord = document.getText(new Range(position.line, rightIndex, document.lineCount, document.lineAt(document.lineCount - 1).text.length));
         return rightWord;
     }
-    takeResponse(result:string, stream: any, insertRange:Range): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList>  {
-        return stream.next().then((response:any)=>{
-            if (response.done) {
-                console.log('done:<<', result, '>>');
-                const inlineCompletionItem = new vscode.InlineCompletionItem(result);
-                inlineCompletionItem.range = insertRange;
-                inlineCompletionItem.command = {
-                    command: 'my-pilot.command1',
-                    title: 'My Inline Completion Demo Command',
-                    arguments: [1, 2],
-                    tooltip: 'My Inline Completion Demo Command Tooltip'
-                };
-        
-                // Since we're returning a single item, wrap it in an InlineCompletionList
-                return new vscode.InlineCompletionList([inlineCompletionItem]);
-            }
-            result += response.value;
-            console.log('a response:<<', response.value, '>>');
-            return this.takeResponse(result, stream, insertRange);
-        });
-
+    /*async takeResponse(result:string, stream: any, insertRange:Range): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList>  {
+        let response = await stream.next();
+        if (response.done) {
+            console.log('done:<<', result, '>>');
+            const inlineCompletionItem = new vscode.InlineCompletionItem(result);
+            inlineCompletionItem.range = insertRange;
+            inlineCompletionItem.command = {
+                command: 'my-pilot.command1',
+                title: 'My Inline Completion Demo Command',
+                arguments: [1, 2],
+                tooltip: 'My Inline Completion Demo Command Tooltip'
+            };
+    
+            // Since we're returning a single item, wrap it in an InlineCompletionList
+            return new vscode.InlineCompletionList([inlineCompletionItem]);
+        }
+        result += response.value;
+        console.log('a current response:<<', response.value, '>>');
+        return await this.takeResponse(result, stream, insertRange);
     }
+    async postResponse(leftWords: string, rightWords: string, insertRange:Range) {
+        let stream = await this.chain.stream({prev: leftWords, post: rightWords});
+        let result = await this.takeResponse('', stream, insertRange);
+        this.responses.push(new Response(leftWords, rightWords, result));
+    }*/
+    makeResponses(responses: string[], insertRange:Range) :  vscode.InlineCompletionList{
+        let inlineCompletionItems: vscode.InlineCompletionItem[] = [];
+        for (let response of responses) {
+            const inlineCompletionItem = new vscode.InlineCompletionItem(response);
+            inlineCompletionItem.range = insertRange;
+            inlineCompletionItems.push(inlineCompletionItem);
+        }
+        return new vscode.InlineCompletionList(inlineCompletionItems);
+    }
+
     async provideInlineCompletionItems(
         document: vscode.TextDocument, 
         position: vscode.Position, 
         context: vscode.InlineCompletionContext, 
         token: vscode.CancellationToken
     ): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList> {
-        +console.log('provideInlineCompletionItems triggered');
+        console.log('provideInlineCompletionItems triggered');
         const insertRange = new vscode.Range(position.line, position.character, position.line, position.character);
         const location = this.isCursorInMiddleOfWord(document, position);
         const leftWords = this.leftWords(document, position, location.leftIndex);
         const rightWords = this.rightWords(document, position, location.rightIndex);
         console.log('prev:', leftWords);
         console.log('next:', rightWords);
-        let result = await this.chain.stream({prev: leftWords, post: rightWords}).then((stream:any)=>{
-            let result = '';
-            return this.takeResponse(result, stream, insertRange);
-        }).then((response:any)=>{
-            return response;
-        }).catch((e:any)=>{
-            console.error(e);
-            throw e;
+        for (let response of this.responses) {
+            if (response.prev.startsWith(leftWords) || leftWords.startsWith(response.prev)) {
+                if (position.line != response.position.line) continue;
+                let positionOffset = position.character - response.position.character;
+
+                if (positionOffset <= 0) {
+                    if (response.prev.substring(0,response.prev.length + positionOffset).trim() != response.prev.trim()) continue;
+                    return this.makeResponses([response.response], insertRange);
+                } else {
+                    let newInput = leftWords.substring(response.prev.length, leftWords.length);
+                    newInput = newInput.trim();
+                    if (response.response.trim().startsWith(newInput)) {
+                        let newResponse = newInput.substring(response.response.length, newInput.length);
+                        return this.makeResponses([newResponse], insertRange);
+                    }
+                }
+            }
+        }
+        this.responses = [];
+        let result = this.chain.invoke({prev: leftWords, post: rightWords}).then((response:any)=>{
+            this.responses.push(new Response(position, leftWords, rightWords, response));
+            return this.makeResponses([], insertRange);
         });
 
         return result;

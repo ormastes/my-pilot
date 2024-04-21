@@ -19,7 +19,23 @@
         "command": "my-pilot.helloWorld",
         "title": "Hello World"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "My Extension Configurations",
+      "properties": {
+        "my-pilot.llm_name": {
+          "type": "string",
+          "default": "StartCoder2",
+          "description": "Model name."
+        },
+        "my-pilot.llm_input": {
+          "type": "object",
+          "default": {},
+          "description": "Model Initialize Input. For GPU, {n_gpu_layers: 32, n_threads: 1,}"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run compile",

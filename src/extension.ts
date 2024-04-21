@@ -17,6 +17,18 @@ const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { setWorkerModel, getResponse, sendMessage, startWorker } = require('./WorkerInterface');
 const { MyEventListener } = require('./EventListener');
+const { LlmProvider, LlmType } = require('./LlmProvider');
+
+
+const provider = LlmType.StartCoder2;
+const modelGpuInput = {
+	n_gpu_layers: 32,
+	n_threads: 1,
+}
+const modelCpuInput = {
+}
+
+// Read Config provider and modelInput
 
 
 //import { LlamaCpp } from "@langchain/community/llms/llama_cpp";
@@ -25,11 +37,22 @@ const llm = new FakeListLLM({
   });
 
 let eventListener:any;
+let llmProvider;
+let chain;
+let testModel:any = null;
+export function setTestModel(model:any){
+	testModel = model;
+}
  
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
+	if (testModel != null){
+		return;
+	}
+	const config = vscode.workspace.getConfiguration('my-pilot');
+	const llmName = config.get('llm_name');
+	const llmInput = config.get('llm_input');
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "my-pilot" is now active!');
@@ -42,29 +65,13 @@ export function activate(context: vscode.ExtensionContext) {
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from my-pilot!');
 	});
-	try {
-		var model = new NodeLlamaCpp({ modelPath:llamaPath, temperature: 0.7 });
-		model._simpleCall("You are a coding assistant. Ready?").then((response:any)=>{
-			console.log("Model loaded.", response);
-
-			const promptText = "Suggest code where {{NEW CODE}} is placed:\n"
-			+"Source Code To update:\nint add(int a, int b) {{\n{{NEW CODE}}\n}}\n"
-			+"Suggested NEW CODE:\n<1>\nreturn a + b;\n<2>\nint result = a + b;\nreturn result;\n"
-			+"Source Code To update:\n{prev}{{NEW CODE}}{post}\nSuggested NEW CODE:\n";
-			
-			const multipleInputPrompt = new PromptTemplate({
-				inputVariables: ["prev", "post"],
-				template: promptText,});
-
-			const chain = multipleInputPrompt.pipe(model);
-			setWorkerModel(chain);
-			eventListener = new MyEventListener(getResponse, sendMessage);
-			startWorker();
-		});
-		
-	}catch (e) {
-		console.error(e);
-	}
+	
+	llmProvider = new LlmProvider(llmName, llmInput);
+	chain = llmProvider.getChain();
+	chain.then((chain:any) => {
+		eventListener = new MyEventListener(chain);
+		eventListener.activate();
+	});
 
 	context.subscriptions.push(disposable);
 }

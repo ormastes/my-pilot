@@ -17,7 +17,11 @@ async function loadModule() {
 
 const { LLM } = require('@langchain/core/language_models/llms')
 const {CallbackManagerForLLMRun} = require('@langchain/core/callbacks/manager')
-const LLAMA2_PATH = "../models/llama-2-13b.Q6_K.gguf";
+
+enum ModelPath {
+    LLAMA2_PATH = "../models/llama-2-13b.Q6_K.gguf",
+    STARCODER2_PATH = "../models/starcoder2-15b-Q6_K.gguf",
+}
 
 
 class NodeLlamaCpp extends LLM {
@@ -29,7 +33,7 @@ class NodeLlamaCpp extends LLM {
         super(params);
         var that = this;
         this.inited = loadModule().then(({LlamaModel, LlamaContext, LlamaChatSession}:any)=>{
-            var model = new LlamaModel({ modelPath: path.join(__dirname, params.modelPath), temperature: 0.7 });
+            var model = new LlamaModel({ modelPath: path.join(__dirname, params.modelPath), temperature: params.temperature });
             var context = new LlamaContext({model});
             var session = new LlamaChatSession({context});
             that.model = model;
@@ -55,6 +59,7 @@ class NodeLlamaCpp extends LLM {
         });
     }
     _simpleCall(prompt: string): string {
+        console.log("Prompt: ", prompt);
         if (!this.session) {
             var initedResult  = this.inited;
             var promptResult  = initedResult.then((session:any)=>{
@@ -78,9 +83,9 @@ class NodeLlamaCpp extends LLM {
         }
     }
 }
-const LlamaCpp = new NodeLlamaCpp({modelPath:LLAMA2_PATH, temperature: 0.7 });
+
 export {
     NodeLlamaCpp,
-    LLAMA2_PATH
+    ModelPath
 };
 

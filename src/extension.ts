@@ -6,16 +6,7 @@ const { Message, SetMainThread } = require('./Message');
 SetMainThread(true);
 const {} = require('./BackGroundWorker');
 
-//const { LlamaCpp } = require("@langchain/community/llms/llama_cpp");
-const llamaPath = "../models/llama-2-13b.Q6_K.gguf";
-//const model = new LlamaCpp({ modelPath: llamaPath, temperature: 0.7 });
-
-import { MyIlineCompletionItemProvider } from './MyIlineCompletionItemProvider';
-
 const { FakeListLLM } = require("langchain/llms/fake");
-const {NodeLlamaCpp, LLAMA2_PATH} = require('./NodeLlamaCpp');
-const { PromptTemplate } = require('@langchain/core/prompts');
-const { setWorkerModel, getResponse, sendMessage, startWorker } = require('./WorkerInterface');
 const { MyEventListener } = require('./EventListener');
 const { LlmProvider, LlmType } = require('./LlmProvider');
 
@@ -24,17 +15,11 @@ const provider = LlmType.StartCoder2;
 const modelGpuInput = {
 	n_gpu_layers: 32,
 	n_threads: 1,
-}
-const modelCpuInput = {
-}
+};
 
-// Read Config provider and modelInput
-
-
-//import { LlamaCpp } from "@langchain/community/llms/llama_cpp";
 const llm = new FakeListLLM({
 	responses: ["I'll callback later.", "You 'console' them!"],
-  });
+});
 
 let eventListener:any;
 let llmProvider;
@@ -47,7 +32,7 @@ export function setTestModel(model:any){
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	if (testModel != null){
+	if (testModel !== null){
 		return;
 	}
 	const config = vscode.workspace.getConfiguration('my-pilot');

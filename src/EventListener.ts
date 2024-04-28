@@ -52,9 +52,9 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
                 let msg = this.pending[0];
                 let responseList = TemplateTool.parseResponse(response);
                 console.log('llm responseList:', responseList);
-                if (responseList.length == 0) return null;
+                if (responseList.length === 0) return null;
                 msg.setContents(responseList);
-                if (this.pending.length == 1) {
+                if (this.pending.length === 1) {
                     this.pending = [];
                     this.processing = null;
                 } else {
@@ -63,6 +63,7 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
                     this.processing = msg;
                 }
                 this.responseCache.add(msg);
+                vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
                 return msg;
         });
         return this.processing;

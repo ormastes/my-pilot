@@ -7,8 +7,9 @@ import { ProviderResult } from 'vscode';
 import { CompletionList } from 'vscode';
 import { ResponseCache } from './ResponseCache';
 
-const { Message, MessageType, Position } = require('./Message');
-const { TemplateTool } = require('./TemplateTool');
+import { Message, MessageType, Position } from './Message';
+import { TemplateTool } from './TemplateTool';
+
 
 enum EventTypes {
     TEXT_CHANGE = 'TEXT_CHANGE',
@@ -19,8 +20,8 @@ enum EventTypes {
 
 export class MyEventListener implements vscode.InlineCompletionItemProvider {
     subscriptions: any[];
-    pending: typeof Message[]; // Fix: Change the type of 'pending' property
-    processing: Promise<any> | null;
+    pending: Message[]; // Fix: Change the type of 'pending' property
+    processing: any | null;
     responseCache: ResponseCache;
     currentSymbol: any;
 
@@ -44,7 +45,7 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
         });
     }
     
-    setProcessing(msg: typeof Message) : Promise<typeof Message>|null {
+    setProcessing(msg: Message) : Promise<Message>|null {
         this.processing = this.chain.invoke({prev:msg.prev, post:msg.next}).then(
             (response:any) =>  {
                 if (response == null) return null;
@@ -59,17 +60,18 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
                     this.processing = null;
                 } else {
                     let last = this.pending.pop();
-                    this.pending = [last];
+                    this.pending = [last!];
                     this.processing = msg;
                 }
                 this.responseCache.add(msg);
+                // Editor > Inline Suggest: Enabled
                 vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
                 return msg;
         });
         return this.processing;
     }
 
-    sendMessage(msg: typeof Message) : Promise<typeof Message>|null {
+    sendMessage(msg: Message) : Promise<Message>|null {
         this.pending.push(msg);
         if (this.processing != null) {
             return null;
@@ -98,12 +100,14 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
         let document = null;
         let selection = null;
         if (eventType == EventTypes.TEXT_CHANGE) {
+            if (event.document == null) return;
             document = event.document;
             if (event.contentChanges.length == 0) return;
             selection = event.contentChanges[0].range;
         } else if (eventType == EventTypes.CURSOR_CHANGE) {
             let textEditor = event.textEditor;
             if (textEditor == null) return;
+            if (textEditor.document == null) return;
             document = textEditor.document;
             if (event.selections.length == 0) return;
             selection = event.selections[0];
@@ -145,7 +149,7 @@ export class MyEventListener implements vscode.InlineCompletionItemProvider {
         console.log('resolveCompletionItem');
         return item;
     }
-    makeResponses(responses: string[], insertRange:Range) :  vscode.InlineCompletionList{
+    makeResponses(responses: string[], insertRange:Range) :  vscode.InlineCompletionList {
         let inlineCompletionItems: vscode.InlineCompletionItem[] = [];
         for (let response of responses) {
             const inlineCompletionItem = new vscode.InlineCompletionItem(response);

@@ -4,8 +4,9 @@ const { FakeListLLM } = require( "langchain/llms/fake");
 const { NodeLlamaCpp, ModelPath } = require("./NodeLlamaCpp");
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { TemplateTool } = require('./TemplateTool');
-
-//import { LlamaCpp } from "@langchain/community/llms/llama_cpp";
+const https = require('https'); // or 'https' for https:// URLs
+const fs = require('fs');
+import path from 'path';
 
 // OPENAI_API_KEY get from environment variable
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -15,19 +16,83 @@ export enum LlmType  {
     OPENAI = "OPENAI",
     FakeLLM = "FakeLLM",
     Llama2 = "Llama2",
+    Llama3 = "Llama3",
     StartCoder2 = "StartCoder2",
 };
 
 export class LlmProvider {
     private llm: any; // You should replace 'any' with the actual type of LLMs
+    private llm_path: any;
     private chain: any;
   
-    constructor(private llm_type: LlmType, private input:any = {}) {
+    constructor(private llm_type: any, private input:any = {}) {
       this.clear();
+      
     }
     clear() {
       this.llm = null;
-      this.chain = null; 
+      this.chain = null;
+      this.llm_path = null; 
+    }
+    static flieDownload(llm_url:string): Promise<unknown> {
+      if (llm_url !== null) {
+
+        let fileName = llm_url.split('/').pop();
+        // modelpath from this script file
+        let modelPath = `../models/${fileName}`;
+        let inputFile = path.join(__dirname, modelPath)
+        if (fs.existsSync(inputFile)) {
+          return Promise.resolve(inputFile);
+        }
+        // download model from url to modelPath
+        const file = fs.createWriteStream(inputFile);
+        let that = this;
+        let result = new Promise((resolve, reject) =>  {
+          const request = https.get(llm_url, function(response:any) {
+            response.pipe(file); 
+            response.on('end', function() {
+              file.close();
+              resolve(modelPath);
+            });
+            response.on('close', function() {
+              console.log('Response closed');
+            });
+          }).on('error', reject);
+        });
+        return result;
+      }
+      return Promise.resolve(null);
+    }
+
+    getLlmPath(): any {
+      if (this.input.llm_url != null) {
+
+        let fileName = this.input.llm_url.split('/').pop();
+        // modelpath from this script file
+        this.input.modelPath = `../models/${fileName}`;
+        let inputFile = path.join(__dirname, this.input.modelPath)
+        if (fs.existsSync(inputFile)) {
+          return Promise.resolve(inputFile);
+        }
+        // download model from url to modelPath
+        const file = fs.createWriteStream(inputFile);
+        let that = this;
+        let result = new Promise((resolve, reject) => {
+          const request = https.get(this.input.llm_url, function(response:any) {
+            response.pipe(file); 
+            response.on('end', function() {
+              file.close();
+              resolve(that.input.modelPath);
+              that.llm_path = that.input.modelPath;
+            });
+            response.on('close', function() {
+              console.log('Response closed');
+            });
+          }).on('error', reject);
+        });
+        return result;
+      }
+      return Promise.resolve(this.input.modelPath);
     }
   
     getLlm(): any { // Replace 'any' with the actual return type
@@ -61,23 +126,21 @@ export class LlmProvider {
       return this.llm;
     }
 
-    getChain(): any {
+    async getChain(): Promise<any> {
       if (this.chain != null) return this.chain;
       try {
-      
+        var path = await this.getLlmPath();
         var model = this.getLlm();
-        var chain = model.call("You are a coding assistant. Ready?").then((response:any)=>{
-          console.log("Model loaded.", response);
+        var response = await model.call("You are a coding assistant. Ready?");
+        console.log("Model loaded.", response);
     
-          const multipleInputPrompt = new PromptTemplate({
-            inputVariables: TemplateTool.inputVariables,
-            template: TemplateTool.promptText,});
-    
-          this.chain = multipleInputPrompt.pipe(model);
-          return this.chain;
+        const multipleInputPrompt = new PromptTemplate({
+          inputVariables: TemplateTool.inputVariables,
+          template: TemplateTool.promptText,});
   
-        });
-        return chain;
+        this.chain = multipleInputPrompt.pipe(model);
+        return this.chain;
+
       }catch (e) {
         console.error(e);
         throw e;

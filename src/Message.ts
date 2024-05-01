@@ -34,8 +34,16 @@ export class Message {
   // contents setter
   setContents(contents: string[]) {
     this.contents = contents;
+    let prevLines = this.prev.split('\n');
+    let lastLine = prevLines[prevLines.length - 1];
+    let lastLineTrim = lastLine.trim(); 
     for (let content of contents) {
-      this.expectedPrev.push(this.prev+content);
+      let contentTrim = content.trim();
+      if (contentTrim.startsWith(lastLineTrim)) {
+        this.expectedPrev.push(lastLine + content.substring(lastLineTrim.length));
+      } else {
+        this.expectedPrev.push(lastLine + content);
+      }
     }
   }
   // contents getter
